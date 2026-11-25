@@ -39,7 +39,7 @@ Todo el texto está en **`src/data/content.js`**:
 - `ALSO`: otras tecnologías con las que has trabajado (lista secundaria bajo el stack).
 - `JOURNEY` y `STATS`: tu trayectoria (hitos cronológicos, cada tarjeta es interactiva) y cifras. Las cifras con `text` se muestran tal cual y las demás cuentan al entrar en pantalla.
 - `PROFILE.cv`: ruta del CV. El archivo está en `public/CV_Cristopher_Nunez_Vargas.pdf`; para actualizarlo, reemplaza ese PDF y conserva el nombre.
-- `MANIFESTO`: las palabras de la sección fija del inicio.
+- `MANIFESTO`: los cuatro principios, que se muestran como tarjetas estáticas.
 
 ## Estructura
 
@@ -48,8 +48,9 @@ server/index.js        Servidor Express: archivos de dist/, /api/health y fallba
 src/
   App.jsx              Composición de la página, modo de efectos y arranque
   data/content.js      Contenido editable
-  scene/Scene.jsx      Núcleo 3D (Three.js): líneas suaves, anillos, etiquetas, partículas
-  components/          Navbar, Hero, Manifesto, Stack, Projects, Process, Contact, Footer, FxToggle, ui
+  scene/Scene.jsx      Escena 3D (Three.js): anillos, etiquetas, partículas, brillo y cámara
+  scene/die.js         Dado de 42 caras con símbolos (el núcleo)
+  components/          Navbar, Hero, Manifesto, Stack, Projects, Journey, Contact, Footer, FxToggle, ui
   hooks/index.js       Progreso de scroll, preferencia de movimiento reducido, foco de luz
   lib/                 Animaciones comunes, contexto de efectos y navegación
   index.css            Estilos globales (Tailwind + capas de atmósfera)
@@ -63,6 +64,9 @@ Diseñado desde 320 px de ancho hasta escritorio. Puntos de corte: `xs` 380 px (
 - Los estados `hover` solo se aplican en dispositivos con ratón (`hoverOnlyWhenSupported` y `@media (hover: hover)`), así que no se quedan pegados al tocar.
 - En pantallas táctiles se quita el grano, se aligera el desenfoque y se limita la resolución del canvas a 1.5x.
 - En móvil no se dibujan las etiquetas orbitando el núcleo y el plano de tecnologías se inclina menos.
+- El núcleo es un dado de 42 caras (`src/scene/die.js`): 12 pentágonos y 30 hexágonos de cristal, cada uno con un símbolo. Son solo dos mallas y un atlas de 59 símbolos (23 dibujos, 10 dígitos y 26 letras). Diez de los dibujos son los de la rueda de Bill, uno por personaje: pino, estrella fugaz, media luna, mano de seis dedos, signo de interrogación, bolsa de hielo, lentes, estrella con ojo, llama y corazón cosido. Con los efectos completos, un par de caras cambia de símbolo al azar cada ~1 s (el 4 pesa cinco veces más, como en el dado de la serie) y un clic o toque "tira" el dado: todas las caras se mezclan. Para cambiar los símbolos edita `SYMBOLS` y `KINDS` en ese archivo. El texto del inicio lleva un halo oscuro para leerse encima.
+- En teléfono la escena se dibuja hasta a 2x con antialiasing activo.
+- La escena limita el total de píxeles que dibuja y baja la calidad en dos niveles si los fotogramas tardan (ver `Scene.jsx`).
 - La escena ignora los cambios de alto pequeños que provoca la barra del navegador al hacer scroll.
 - Para revisar anchos de teléfono sin dispositivo, abre las herramientas de desarrollo del navegador y usa el modo dispositivo.
 

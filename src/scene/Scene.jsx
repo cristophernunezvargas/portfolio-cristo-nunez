@@ -1,21 +1,22 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { SECTION_IDS, SECTION_NAMES, MANIFESTO, STACK } from "../data/content";
+import { SECTION_IDS, SECTION_NAMES, STACK } from "../data/content";
 import { clamp, smooth } from "../lib/motion";
+import { makeDie } from "./die";
 
 /* ---------- Escena 3D: el núcleo viaja con el scroll ---------- */
 // x es un multiplicador del lado derecho/izquierdo; s escala; o opacidad base de las líneas; sp velocidad de giro
 export const KF_WIDE = [
-  { x: 0, y: 0, s: 1.15, o: 0.36, sp: 1 },     // inicio
-  { x: 0, y: 0, s: 1.7, o: 0.55, sp: 2.2 },    // manifiesto
+  { x: 0, y: 0, s: 1.15, o: 0.24, sp: 1 },     // inicio
+  { x: 1, y: 0, s: 0.85, o: 0.26, sp: 1.2 },   // principios
   { x: 1, y: -0.2, s: 0.78, o: 0.32, sp: 1 },  // stack
   { x: -1, y: 0.2, s: 0.72, o: 0.32, sp: 1 },  // proyectos
   { x: 1, y: 0, s: 0.7, o: 0.3, sp: 1 },       // trayectoria
   { x: 0, y: 0, s: 1.2, o: 0.42, sp: 1.5 },    // contacto
 ];
 export const KF_TALL = [
-  { x: 0, y: 0.6, s: 0.95, o: 0.34, sp: 1 },
-  { x: 0, y: 0, s: 1.4, o: 0.5, sp: 2.2 },
+  { x: 0, y: 0.6, s: 0.95, o: 0.22, sp: 1 },
+  { x: 0, y: 2.4, s: 0.6, o: 0.14, sp: 1.2 },
   { x: 0, y: 2.4, s: 0.6, o: 0.14, sp: 1 },
   { x: 0, y: -2.4, s: 0.6, o: 0.14, sp: 1 },
   { x: 0, y: 2.4, s: 0.6, o: 0.14, sp: 1 },
@@ -44,42 +45,6 @@ export function makeLabelTexture(text, color) {
   g.fillText(text, 128, 34);
   return new THREE.CanvasTexture(c);
 }
-// Vértices únicos: evita sumar el mismo nodo varias veces con mezcla aditiva
-export function uniqueVertices(geo) {
-  const pos = geo.attributes.position, seen = new Set(), out = [];
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i);
-    const k = Math.round(x * 1000) + "," + Math.round(y * 1000) + "," + Math.round(z * 1000);
-    if (!seen.has(k)) { seen.add(k); out.push(x, y, z); }
-  }
-  return new Float32Array(out);
-}
-// Líneas suaves: la opacidad sube hacia el contorno y baja de cara a la cámara
-export function softWire(color, power) {
-  return new THREE.ShaderMaterial({
-    uniforms: { uColor: { value: new THREE.Color(color) }, uOpacity: { value: 0.5 }, uTime: { value: 0 }, uPow: { value: power } },
-    vertexShader: [
-      "uniform float uPow; varying float vRim; varying float vH;",
-      "void main() {",
-      "  vec4 mv = modelViewMatrix * vec4(position, 1.0);",
-      "  vec3 n = normalize(normalMatrix * normal);",
-      "  vec3 v = normalize(-mv.xyz);",
-      "  vRim = pow(1.0 - abs(dot(n, v)), uPow);",
-      "  vH = position.y;",
-      "  gl_Position = projectionMatrix * mv;",
-      "}"
-    ].join("\n"),
-    fragmentShader: [
-      "uniform vec3 uColor; uniform float uOpacity; uniform float uTime; varying float vRim; varying float vH;",
-      "void main() {",
-      "  float shimmer = 0.88 + 0.12 * sin(uTime * 1.4 + vH * 2.2);",
-      "  float a = uOpacity * (0.14 + 0.86 * vRim) * shimmer;",
-      "  gl_FragColor = vec4(uColor, a);",
-      "}"
-    ].join("\n"),
-    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, wireframe: true,
-  });
-}
 export function ringLine(radius, color) {
   const pts = [];
   for (let i = 0; i <= 256; i++) { const a = (i / 256) * Math.PI * 2; pts.push(new THREE.Vector3(Math.cos(a) * radius, 0, Math.sin(a) * radius)); }
@@ -96,10 +61,13 @@ export function Scene({ fxRef }) {
     // El coste de la escena crece con los píxeles que pinta (brillos y partículas aditivas): se limita el total,
     // no solo la densidad, para que un monitor grande o una pantalla retina no la dejen pegada.
     const dpr0 = window.devicePixelRatio || 1;
-    const BUDGET = coarse ? 1.1e6 : 1.8e6;
-    const ratioFor = (w, h, q) => Math.max(0.5, Math.min(dpr0, coarse ? 1.5 : 1.75, Math.sqrt(BUDGET / (w * h))) * q);
+    // En teléfono la escena es ligera (pocas caras), así que se puede dibujar a casi el doble de resolución:
+    // a 1,5x las líneas finas se veían borrosas al estirarse a la pantalla real.
+    const BUDGET = coarse ? 1.7e6 : 1.8e6;
+    const ratioFor = (w, h, q) => Math.max(0.5, Math.min(dpr0, coarse ? 2 : 1.75, Math.sqrt(BUDGET / (w * h))) * q);
     try {
-      const aa = dpr0 < 1.5 && window.innerWidth * window.innerHeight * dpr0 * dpr0 <= BUDGET;
+      // En móvil el antialiasing es barato (GPU por teselas) y evita las líneas dentadas; en escritorio solo si sobra presupuesto
+      const aa = coarse || (dpr0 < 1.5 && window.innerWidth * window.innerHeight * dpr0 * dpr0 <= BUDGET);
       renderer = new THREE.WebGLRenderer({ canvas, antialias: aa, alpha: true, powerPreference: "high-performance" });
     } catch { document.documentElement.setAttribute("data-webgl", "off"); return; }
     renderer.setClearColor(0x000000, 0);
@@ -114,21 +82,8 @@ export function Scene({ fxRef }) {
     const dotTex = makeDotTexture([[0, 1], [0.35, 0.55], [1, 0]]);
     const glowTex = makeDotTexture([[0, 1], [0.25, 0.5], [1, 0]]);
 
-    // Esferas de líneas suaves + nodos redondos
-    const outerGeo = new THREE.IcosahedronGeometry(3, 2);
-    const outerMat = softWire(0x7000ff, 1.6);
-    const outer = new THREE.Mesh(outerGeo, outerMat);
-    const innerGeo = new THREE.IcosahedronGeometry(1.85, 1);
-    const innerMat = softWire(0x00f0ff, 1.3);
-    const inner = new THREE.Mesh(innerGeo, innerMat);
-    const nodeGeo = new THREE.BufferGeometry();
-    nodeGeo.setAttribute("position", new THREE.BufferAttribute(uniqueVertices(outerGeo), 3));
-    const nodeMat = new THREE.PointsMaterial({ color: 0xb86bff, size: 0.22, map: dotTex, transparent: true, opacity: 0.9, depthWrite: false, blending: THREE.AdditiveBlending });
-    const nodes = new THREE.Points(nodeGeo, nodeMat);
-    const innerNodeGeo = new THREE.BufferGeometry();
-    innerNodeGeo.setAttribute("position", new THREE.BufferAttribute(uniqueVertices(innerGeo), 3));
-    const innerNodeMat = new THREE.PointsMaterial({ color: 0x00f0ff, size: 0.16, map: dotTex, transparent: true, opacity: 0.85, depthWrite: false, blending: THREE.AdditiveBlending });
-    const innerNodes = new THREE.Points(innerNodeGeo, innerNodeMat);
+    // Dado de 42 caras: paneles de cristal con un símbolo cada uno
+    const die = makeDie(3);
 
     // Anillos finos con un satélite luminoso cada uno
     const ring1 = ringLine(3.85, 0x7000ff); ring1.rotation.set(0.3, 0, 0.25);
@@ -165,7 +120,7 @@ export function Scene({ fxRef }) {
     glow.scale.set(5.2, 5.2, 1);
     const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, color: 0x6a3cff, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, opacity: 0.22, fog: false }));
     halo.scale.set(11, 11, 1);
-    group.add(outer, inner, nodes, innerNodes, ring1, ring2, core, glow, halo);
+    group.add(die.group, ring1, ring2, core, glow, halo);
 
     // Etiquetas de tecnologías que orbitan el núcleo cuando se llega al stack
     const labelTex = [];
@@ -217,9 +172,9 @@ export function Scene({ fxRef }) {
     const cur = { x: 0, y: 0, s: 1.15, o: 0.36, sp: 1 };
     const S = { x: 0, y: 0, s: 1, o: 0, sp: 1 };
     const tw = [0, 0, 0, 0, 0, 0];
-    let tops = [], mh = 0, vh = window.innerHeight, wide = true, side = 5.6, fit = 1;
+    let tops = [], vh = window.innerHeight, wide = true, side = 5.6, fit = 1;
     let lastW = 0, lastH = 0;
-    let scrollY = window.scrollY, lastY = scrollY, vel = 0, pulse = 0, lastWi = -1, hudN = 0;
+    let scrollY = window.scrollY, lastY = scrollY, vel = 0, pulse = 0, hudN = 0;
     let introStart = -1, tt = 0, slow = 0, frames = 0, qTier = 0, raf = 0, lost = false;
     // Niveles de calidad: factor de resolución y fracción de partículas que se dibujan
     const QUAL = [1, 0.75, 0.55], FIELD = [1, 0.6, 0.35];
@@ -227,8 +182,6 @@ export function Scene({ fxRef }) {
     const measure = () => {
       const sy = window.scrollY;
       tops = SECTION_IDS.map((id) => { const el = document.getElementById(id); return el ? el.getBoundingClientRect().top + sy : 0; });
-      const m = document.getElementById("manifiesto");
-      mh = m ? m.offsetHeight : 0;
     };
     const resize = () => {
       const w = window.innerWidth, h = window.innerHeight;
@@ -252,8 +205,9 @@ export function Scene({ fxRef }) {
       mouse.ty = (e.clientY / window.innerHeight) * 2 - 1;
     };
     const onScroll = () => { scrollY = window.scrollY; };
-    const onDown = () => { if (fxRef.current === "full") pulse = Math.max(pulse, 1); };
-    const onBurst = () => { pulse = 1.6; };
+    // Un clic o toque "tira" el dado: la escena pulsa y todas las caras cambian de símbolo
+    const onDown = () => { if (fxRef.current === "full") { pulse = Math.max(pulse, 1); die.roll(); } };
+    const onBurst = () => { pulse = 1.6; if (fxRef.current === "full") die.roll(); };
     const clock = new THREE.Clock();
     const onReady = () => { if (introStart < 0) introStart = clock.elapsedTime; };
     const onLost = (e) => { e.preventDefault(); cancelAnimationFrame(raf); lost = true; };
@@ -300,7 +254,7 @@ export function Scene({ fxRef }) {
       // Estado objetivo según el scroll: se mantiene en cada sección y viaja al entrar la siguiente
       const kf = wide ? KF_WIDE : KF_TALL;
       S.x = kf[0].x; S.y = kf[0].y; S.s = kf[0].s; S.o = kf[0].o; S.sp = kf[0].sp;
-      let secIdx = 0, wi = -1;
+      let secIdx = 0;
       if (tops.length === SECTION_IDS.length) {
         for (let j = 1; j < kf.length; j++) {
           const a = tops[j] - vh, b = tops[j] - vh * 0.2;
@@ -310,12 +264,7 @@ export function Scene({ fxRef }) {
           S.o += (kf[j].o - S.o) * k; S.sp += (kf[j].sp - S.sp) * k;
           if (y + vh * 0.5 >= tops[j]) secIdx = j;
         }
-        if (full && mh > vh && y >= tops[1] && y <= tops[1] + mh - vh) {
-          wi = Math.min(MANIFESTO.length - 1, Math.floor(((y - tops[1]) / (mh - vh)) * MANIFESTO.length));
-        }
       }
-      if (wi !== lastWi && wi >= 0) pulse = Math.max(pulse, 0.8);
-      lastWi = wi;
 
       const k = 1 - Math.exp(-rdt * 4);
       cur.x += (S.x * side - cur.x) * k; cur.y += (S.y - cur.y) * k; cur.s += (S.s - cur.s) * k;
@@ -330,7 +279,6 @@ export function Scene({ fxRef }) {
       // Movimiento
       group.rotation.y += dt * (0.12 * cur.sp + vel * 0.014);
       group.rotation.x += dt * 0.04;
-      inner.rotation.y -= dt * 0.3; innerNodes.rotation.y = inner.rotation.y;
       ring1.rotation.z = 0.25 + Math.sin(tt * 0.3) * 0.08; ring2.rotation.x = 1.2 + Math.cos(tt * 0.25) * 0.08;
       sat1.position.set(Math.cos(tt * 0.7) * 3.85, 0, Math.sin(tt * 0.7) * 3.85);
       sat2.position.set(Math.cos(-tt * 0.5 + 2) * 4.3, 0, Math.sin(-tt * 0.5 + 2) * 4.3);
@@ -344,10 +292,9 @@ export function Scene({ fxRef }) {
 
       // Opacidad y brillo por sección
       const o = cur.o * ik;
-      outerMat.uniforms.uOpacity.value = Math.min(1, o * 2.3); outerMat.uniforms.uTime.value = tt;
-      innerMat.uniforms.uOpacity.value = Math.min(1, o * 2.6); innerMat.uniforms.uTime.value = tt + 1.7;
+      die.setOpacity(Math.min(1, o * 2.1));
+      die.update(rdt, full);
       ring1.material.opacity = Math.min(0.8, o * 1.5); ring2.material.opacity = Math.min(0.8, o * 1.5);
-      nodeMat.opacity = Math.min(1, (0.35 + cur.o) * ik); innerNodeMat.opacity = Math.min(1, (0.3 + cur.o) * ik);
       sat1.material.opacity = ik; sat2.material.opacity = ik;
       core.scale.setScalar(Math.max(0.001, (1 + 0.1 * Math.sin(tt * 2.2) + pulse * 1.2) * ik));
       glow.material.opacity = 0.9 * ik; halo.material.opacity = 0.22 * ik;
@@ -389,8 +336,9 @@ export function Scene({ fxRef }) {
       window.removeEventListener("portfolio:ready", onReady);
       canvas.removeEventListener("webglcontextlost", onLost);
       canvas.removeEventListener("webglcontextrestored", onRestored);
-      [outerGeo, innerGeo, nodeGeo, innerNodeGeo, coreGeo, fieldGeo, bokehGeo, ring1.geometry, ring2.geometry].forEach((g) => g.dispose());
-      [outerMat, innerMat, nodeMat, innerNodeMat, coreMat, fieldMat, bokehMat, ring1.material, ring2.material, sat1.material, sat2.material, glow.material, halo.material].forEach((m) => m.dispose());
+      die.dispose();
+      [coreGeo, fieldGeo, bokehGeo, ring1.geometry, ring2.geometry].forEach((g) => g.dispose());
+      [coreMat, fieldMat, bokehMat, ring1.material, ring2.material, sat1.material, sat2.material, glow.material, halo.material].forEach((m) => m.dispose());
       labels.forEach((L) => L.mat.dispose()); labelTex.forEach((t) => t.dispose());
       dotTex.dispose(); glowTex.dispose(); renderer.dispose();
     };

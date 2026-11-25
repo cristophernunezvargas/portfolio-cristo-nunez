@@ -233,22 +233,14 @@ html[data-calm] .pulse-dot, html[data-calm] .blink, html[data-calm] .spin-slow, 
 html[data-calm] .btn-neon::after { display: none; }
 html[data-calm] #boot .bar::after { animation: none; width: 100%; }
 
-/* Tamaños fluidos: el nombre y las palabras del manifiesto crecen con el ancho del teléfono */
+/* Tamaño fluido del nombre: crece con el ancho del teléfono */
 .hero-name { font-size: clamp(2.6rem, 13vw, 4.5rem); }
-/* text-shadow en lugar de filter: drop-shadow obliga a Safari a repintar un área enorme en cada fotograma */
-.mani-word { font-size: 13vw; text-shadow: 0 0 40px rgba(5, 5, 8, 0.85); }
-.mani-track { height: 400vh; height: 400svh; }
-@media (min-width: 640px) {
-  .mani-word { font-size: clamp(4rem, 12.5vw, 10rem); }
-}
 @media (min-width: 1024px) {
   .hero-name { font-size: clamp(4.5rem, 9.5vw, 7rem); }
 }
 
-/* Pantallas muy bajas (teléfono en horizontal): sin rótulo para que no choque con la palabra */
-@media (max-height: 500px) {
-  .mani-label { display: none; }
-}
+/* El texto del inicio queda sobre el núcleo: un halo oscuro estático mantiene la lectura */
+.hero-glow p, .hero-glow h2 { text-shadow: 0 0 14px rgba(5, 5, 8, 0.95), 0 0 3px rgba(5, 5, 8, 0.85); }
 
 /* Pantallas táctiles: menos coste de pintado (sin grano, desenfoque más ligero) */
 @media (pointer: coarse) {
