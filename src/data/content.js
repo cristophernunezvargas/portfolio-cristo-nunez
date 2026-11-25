@@ -18,8 +18,6 @@ export const PROFILE = {
   linkedin: "https://www.linkedin.com/in/cristophernunezvargas/",
   // El PDF está en public/. Si lo cambias, conserva el nombre o actualiza esta ruta.
   cv: "/CV_Cristopher_Nunez_Vargas.pdf",
-  // Temporal: enlace al portafolio anterior. Bórralo cuando ya no haga falta.
-  oldPortfolio: "https://portfoliocristo.netlify.app/",
 };
 // Credenciales: se muestran de forma discreta bajo los botones del inicio
 export const CREDENTIALS = [

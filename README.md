@@ -33,8 +33,7 @@ Si necesitas la API en desarrollo, levanta `npm start` en otra terminal: Vite re
 
 Todo el texto está en **`src/data/content.js`**:
 
-- `PROFILE`: nombre, titulación, frase de presentación, correo, GitHub y LinkedIn. `oldPortfolio` es un enlace temporal al portafolio anterior (aparece bajo los botones de contacto): bórralo cuando ya no haga falta.
-- `CREDENTIALS`: certificaciones y colegiatura que aparecen como pastillas discretas bajo los botones del inicio.
+- `PROFILE`: nombre, titulación, frase de presentación, correo, GitHub y LinkedIn.- `CREDENTIALS`: certificaciones y colegiatura que aparecen como pastillas discretas bajo los botones del inicio.
 - `STACK`: tecnologías (nombre, categoría e icono de Lucide).
 - `PROJECTS`: tus proyectos. Para mostrar los botones Demo y Código añade `links: { demo: "https://...", code: "https://..." }`. Sin enlaces aparece "Pedir detalles".
 - `ALSO`: otras tecnologías con las que has trabajado (lista secundaria bajo el stack).

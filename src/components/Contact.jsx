@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Github, Linkedin, Copy, Check, Download, MapPin, ExternalLink } from "lucide-react";
+import { Github, Linkedin, Copy, Check, Download, MapPin } from "lucide-react";
 import { PROFILE } from "../data/content";
 import { reveal } from "../lib/motion";
 import { Magnetic, Words } from "./ui";
@@ -61,14 +61,6 @@ export function Contact() {
               <a href={PROFILE.linkedin} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-sm"><Linkedin size={17} aria-hidden="true" /> LinkedIn</a>
               <a href={PROFILE.cv} download className="btn btn-ghost btn-sm"><Download size={17} aria-hidden="true" /> Descargar CV</a>
             </div>
-            {PROFILE.oldPortfolio && (
-              <p className="mt-5">
-                <a href={PROFILE.oldPortfolio} target="_blank" rel="noopener noreferrer"
-                  className="font-mono inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest underline-offset-4 hover:underline" style={{ color: "var(--fg-mute)" }}>
-                  Portafolio anterior <ExternalLink size={12} aria-hidden="true" />
-                </a>
-              </p>
-            )}
           </div>
         </motion.div>
       </div>
