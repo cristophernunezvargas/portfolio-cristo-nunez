@@ -75,11 +75,11 @@ export function App() {
     };
   }, []);
 
-  const cycle = () => {
-    const next = fx === "full" ? "calm" : fx === "calm" ? "paused" : "full";
+  const choose = (next) => {
     setOverride(next);
     try { window.localStorage.setItem("portfolio-fx", next); } catch {}
   };
+  const cycle = () => choose(fx === "full" ? "calm" : fx === "calm" ? "paused" : "full");
   const skip = (e) => { e.preventDefault(); const m = document.getElementById("contenido"); if (m) m.focus(); };
 
   return (
@@ -105,7 +105,7 @@ export function App() {
           <Contact />
         </main>
         <Footer />
-        <FxToggle fx={fx} onCycle={cycle} />
+        <FxToggle fx={fx} onCycle={cycle} hint={sysReduce && !override} onFull={() => choose("full")} onDismiss={() => choose("calm")} />
       </FxContext.Provider>
     </MotionConfig>
   );
