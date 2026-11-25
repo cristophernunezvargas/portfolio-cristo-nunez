@@ -84,6 +84,16 @@ export function Scene({ fxRef }) {
 
     // Dado de 42 caras: paneles de cristal con un símbolo cada uno
     const die = makeDie(3);
+    // Al terminar una tirada se muestra el resultado como código en la esquina (#roll está en App.jsx)
+    let rollT = 0;
+    die.setOnSettle((name) => {
+      const el = document.getElementById("roll");
+      if (!el) return;
+      el.textContent = 'dado.tirar() // → "' + name + '"' + (name === "4" ? " (cae mucho)" : "");
+      el.setAttribute("data-on", "");
+      clearTimeout(rollT);
+      rollT = setTimeout(() => el.removeAttribute("data-on"), 3800);
+    });
 
     // Anillos finos con un satélite luminoso cada uno
     const ring1 = ringLine(3.85, 0x7000ff); ring1.rotation.set(0.3, 0, 0.25);
@@ -293,7 +303,8 @@ export function Scene({ fxRef }) {
       // Opacidad y brillo por sección
       const o = cur.o * ik;
       die.setOpacity(Math.min(1, o * 2.1));
-      die.update(rdt, full);
+      if (full) die.setTheme(secIdx);
+      die.update(rdt, full, camera);
       ring1.material.opacity = Math.min(0.8, o * 1.5); ring2.material.opacity = Math.min(0.8, o * 1.5);
       sat1.material.opacity = ik; sat2.material.opacity = ik;
       core.scale.setScalar(Math.max(0.001, (1 + 0.1 * Math.sin(tt * 2.2) + pulse * 1.2) * ik));
@@ -326,7 +337,7 @@ export function Scene({ fxRef }) {
     tick();
 
     return () => {
-      cancelAnimationFrame(raf); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+      cancelAnimationFrame(raf); clearTimeout(rollT); clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
       if (ro) ro.disconnect();
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointermove", onMove);

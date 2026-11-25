@@ -239,6 +239,12 @@ html[data-calm] #boot .bar::after { animation: none; width: 100%; }
   .hero-name { font-size: clamp(4.5rem, 9.5vw, 7rem); }
 }
 
+/* Resultado de la tirada del dado, escrito como código: aparece un momento en la esquina inferior izquierda */
+.roll-wrap { bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); max-width: calc(100vw - 130px); }
+@media (min-width: 1024px) { .roll-wrap { bottom: calc(env(safe-area-inset-bottom, 0px) + 44px); } }
+#roll { display: block; opacity: 0; transform: translateY(4px); transition: opacity 0.35s ease, transform 0.35s ease; text-shadow: 0 0 10px rgba(5, 5, 8, 0.95); }
+#roll[data-on] { opacity: 0.92; transform: none; }
+
 /* El texto del inicio queda sobre el núcleo: un halo oscuro estático mantiene la lectura */
 .hero-glow p, .hero-glow h2 { text-shadow: 0 0 14px rgba(5, 5, 8, 0.95), 0 0 3px rgba(5, 5, 8, 0.85); }
 

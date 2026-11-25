@@ -93,6 +93,9 @@ export function App() {
         <div aria-hidden="true" className="gutter pointer-events-none fixed left-0 z-[8] hidden lg:block" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 20px)" }}>
           <span id="hud" className="hud font-mono whitespace-pre text-[11px] uppercase tracking-widest" style={{ color: "var(--fg-mute)" }}>INICIO      x  0.00  y  0.00  rot 000°</span>
         </div>
+        <div aria-hidden="true" className="roll-wrap gutter pointer-events-none fixed left-0 z-[8]">
+          <span id="roll" className="font-mono text-[11px] tracking-wide text-neon" />
+        </div>
         <main id="contenido" tabIndex={-1} className="relative z-10">
           <Hero />
           <Manifesto />
