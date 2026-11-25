@@ -92,11 +92,16 @@ export function Scene({ fxRef }) {
   useEffect(() => {
     const canvas = canvasRef.current;
     let renderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: "high-performance" });
-    } catch { document.documentElement.setAttribute("data-webgl", "off"); return; }
     const coarse = window.matchMedia("(pointer: coarse)").matches;
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, coarse ? 1.5 : 1.75));
+    // El coste de la escena crece con los píxeles que pinta (brillos y partículas aditivas): se limita el total,
+    // no solo la densidad, para que un monitor grande o una pantalla retina no la dejen pegada.
+    const dpr0 = window.devicePixelRatio || 1;
+    const BUDGET = coarse ? 1.1e6 : 1.8e6;
+    const ratioFor = (w, h, q) => Math.max(0.5, Math.min(dpr0, coarse ? 1.5 : 1.75, Math.sqrt(BUDGET / (w * h))) * q);
+    try {
+      const aa = dpr0 < 1.5 && window.innerWidth * window.innerHeight * dpr0 * dpr0 <= BUDGET;
+      renderer = new THREE.WebGLRenderer({ canvas, antialias: aa, alpha: true, powerPreference: "high-performance" });
+    } catch { document.documentElement.setAttribute("data-webgl", "off"); return; }
     renderer.setClearColor(0x000000, 0);
 
     const scene = new THREE.Scene();
@@ -215,7 +220,9 @@ export function Scene({ fxRef }) {
     let tops = [], mh = 0, vh = window.innerHeight, wide = true, side = 5.6, fit = 1;
     let lastW = 0, lastH = 0;
     let scrollY = window.scrollY, lastY = scrollY, vel = 0, pulse = 0, lastWi = -1, hudN = 0;
-    let introStart = -1, tt = 0, slow = 0, frames = 0, lowQ = false, raf = 0, lost = false;
+    let introStart = -1, tt = 0, slow = 0, frames = 0, qTier = 0, raf = 0, lost = false;
+    // Niveles de calidad: factor de resolución y fracción de partículas que se dibujan
+    const QUAL = [1, 0.75, 0.55], FIELD = [1, 0.6, 0.35];
 
     const measure = () => {
       const sy = window.scrollY;
@@ -228,6 +235,7 @@ export function Scene({ fxRef }) {
       // En móvil la barra del navegador cambia el alto al hacer scroll: si solo varía un poco, se ignora
       if (w === lastW && Math.abs(h - lastH) < 180) return;
       lastW = w; lastH = h;
+      renderer.setPixelRatio(ratioFor(w, h, QUAL[qTier]));
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
@@ -276,10 +284,17 @@ export function Scene({ fxRef }) {
       const y = scrollY;
       const ik = introStart < 0 ? 0 : 1 - Math.pow(1 - clamp((real - introStart) / 2.0, 0, 1), 4);
 
-      // Calidad adaptativa: si el equipo va justo, baja la resolución y reduce partículas
-      if (!lowQ && ++frames > 120) {
-        if (rdtRaw > 0.034) slow++; else slow = Math.max(0, slow - 2);
-        if (slow > 50) { lowQ = true; renderer.setPixelRatio(1); fieldGeo.setDrawRange(0, Math.floor(count * 0.5)); }
+      // Calidad adaptativa: si el equipo va justo, baja la resolución y reduce partículas, hasta dos niveles.
+      // Se ignoran los fotogramas muy largos (pestaña en segundo plano) y los primeros, que compilan shaders.
+      if (qTier < 2 && rdtRaw < 0.5 && ++frames > 40) {
+        if (rdtRaw > 0.03) slow++; else slow = Math.max(0, slow - 2);
+        if (slow > 24) {
+          qTier++; slow = 0; frames = 0;
+          renderer.setPixelRatio(ratioFor(lastW, lastH, QUAL[qTier]));
+          renderer.setSize(lastW, lastH, false);
+          fieldGeo.setDrawRange(0, Math.floor(count * FIELD[qTier]));
+          if (qTier === 2) bokeh.visible = false;
+        }
       }
 
       // Estado objetivo según el scroll: se mantiene en cada sección y viaja al entrar la siguiente

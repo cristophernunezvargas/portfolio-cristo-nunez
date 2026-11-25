@@ -21,8 +21,8 @@ export function ManifestoWord({ i, p, item }) {
   const cutBottom = useTransform(p, rng, [0, 0, 0, last ? 0 : 66]);
   const clip = useMotionTemplate`inset(${cutTop}% 0% ${cutBottom}% 0%)`;
   return (
-    <motion.div style={{ opacity, y, clipPath: clip }} className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
-      <h2 className="mani-word font-display name-shadow font-bold uppercase leading-none tracking-tight">
+    <motion.div style={{ opacity, y, clipPath: clip, willChange: "opacity, transform, clip-path" }} className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
+      <h2 className="mani-word font-display font-bold uppercase leading-none tracking-tight">
         {item.w}<span className="text-neon">.</span>
       </h2>
       <p className="mx-auto mt-6 max-w-md text-base sm:text-lg" style={{ color: "var(--fg-soft)" }}>{item.d}</p>

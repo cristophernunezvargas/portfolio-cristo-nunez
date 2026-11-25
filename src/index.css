@@ -235,7 +235,8 @@ html[data-calm] #boot .bar::after { animation: none; width: 100%; }
 
 /* Tamaños fluidos: el nombre y las palabras del manifiesto crecen con el ancho del teléfono */
 .hero-name { font-size: clamp(2.6rem, 13vw, 4.5rem); }
-.mani-word { font-size: 13vw; }
+/* text-shadow en lugar de filter: drop-shadow obliga a Safari a repintar un área enorme en cada fotograma */
+.mani-word { font-size: 13vw; text-shadow: 0 0 40px rgba(5, 5, 8, 0.85); }
 .mani-track { height: 400vh; height: 400svh; }
 @media (min-width: 640px) {
   .mani-word { font-size: clamp(4rem, 12.5vw, 10rem); }
